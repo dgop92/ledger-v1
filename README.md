@@ -2,7 +2,9 @@
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
-> **_NOTE:_** This project uses the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD). BMad `v6.10.0` must be installed locally (it generates the `.claude/skills/bmad-*`, `_bmad/`, and `_bmad-output/` directories, which are gitignored and not committed).
+> **_NOTE:_** This project uses the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD). BMad `v6.10.0` must be installed locally (it generates the `.agents/skills/bmad-*`, `_bmad/`, and `_bmad-output/` directories, which are gitignored and not committed).
+>
+> Install bmad under `.agents/skills` by chosing an open source agent, like pi dev.
 
 If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
 
