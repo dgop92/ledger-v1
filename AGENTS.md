@@ -14,6 +14,8 @@ Quarkus (Java 25) backend for a financial ledger. Early-stage: currently a bare 
 
 Run commands from the repo root; Gradle wrapper (`./gradlew`) is checked in, don't rely on a system Gradle install.
 
+`./gradlew build` is the main verification command when implementing tasks — it runs compilation, Spotless formatting checks, and all tests (`build` depends on `check`, so a separate `./gradlew check` is redundant).
+
 ## Coding Conventions and Style
 
 - **Language:** Java 25 (`sourceCompatibility`/`targetCompatibility` in `build.gradle.kts`)
