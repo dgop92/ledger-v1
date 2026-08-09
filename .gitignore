@@ -58,3 +58,4 @@ _bmad/custom/*.user.toml
 
 # We do not want spec artifacts in the repo.
 docs/superpowers
+.superpowers/
