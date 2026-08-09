@@ -9,6 +9,7 @@ Quarkus (Java 25) backend for a financial ledger. Early-stage: currently a bare 
 | Dev mode (live reload) | `./gradlew quarkusDev` |
 | Build (JVM jar) | `./gradlew build` |
 | Run all tests | `./gradlew test` |
+| Reformat code (Spotless) | `./gradlew spotlessApply` |
 | Build native executable | `./gradlew build -Dquarkus.native.enabled=true` |
 
 Run commands from the repo root; Gradle wrapper (`./gradlew`) is checked in, don't rely on a system Gradle install.

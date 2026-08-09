@@ -38,7 +38,7 @@ spotless {
     java {
         target("src/**/*.java")
         googleJavaFormat()
-        cleanthat()
+        cleanthat().sourceCompatibility("21")
         forbidWildcardImports()
         formatAnnotations()
     }
