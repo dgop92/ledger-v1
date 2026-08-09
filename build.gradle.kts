@@ -1,6 +1,7 @@
 plugins {
     java
     id("io.quarkus")
+    id("com.diffplug.spotless") version "8.8.0"
 }
 
 repositories {
@@ -13,7 +14,7 @@ val quarkusPlatformArtifactId: String by project
 val quarkusPlatformVersion: String by project
 
 dependencies {
-    implementation(enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
+    implementation(enforcedPlatform("$quarkusPlatformGroupId:$quarkusPlatformArtifactId:$quarkusPlatformVersion"))
     implementation("io.quarkus:quarkus-rest")
     implementation("io.quarkus:quarkus-arc")
     testImplementation("io.quarkus:quarkus-junit")
@@ -31,4 +32,18 @@ java {
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
     options.compilerArgs.add("-parameters")
+}
+
+spotless {
+    java {
+        target("src/**/*.java")
+        googleJavaFormat()
+        cleanthat().sourceCompatibility("21")
+        forbidWildcardImports()
+        formatAnnotations()
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint()
+    }
 }
