@@ -10,13 +10,31 @@ import com.dgop92.ledger_v1.domain.account.AccountType;
 import com.dgop92.ledger_v1.domain.exception.InvalidAccountNameException;
 import com.dgop92.ledger_v1.domain.exception.InvalidAccountTypeException;
 import com.dgop92.ledger_v1.domain.port.IdGenerator;
+import com.dgop92.ledger_v1.domain.transaction.JournalEntryId;
+import com.dgop92.ledger_v1.domain.transaction.TransactionId;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class CreateAccountUseCaseTest {
 
   private final FakeAccountRepository accountRepository = new FakeAccountRepository();
-  private final IdGenerator idGenerator = () -> new AccountId(UUID.randomUUID());
+  private final IdGenerator idGenerator =
+      new IdGenerator() {
+        @Override
+        public AccountId newAccountId() {
+          return new AccountId(UUID.randomUUID());
+        }
+
+        @Override
+        public TransactionId newTransactionId() {
+          throw new UnsupportedOperationException("not used by CreateAccountUseCase");
+        }
+
+        @Override
+        public JournalEntryId newJournalEntryId() {
+          throw new UnsupportedOperationException("not used by CreateAccountUseCase");
+        }
+      };
   private final CreateAccountUseCase useCase =
       new CreateAccountUseCase(accountRepository, idGenerator);
 
