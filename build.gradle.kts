@@ -1,49 +1,52 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
+
 plugins {
-    java
-    id("io.quarkus")
     id("com.diffplug.spotless") version "8.8.0"
 }
 
-repositories {
-    mavenCentral()
-    mavenLocal()
-}
+allprojects {
+    apply(plugin = "com.diffplug.spotless")
 
-val quarkusPlatformGroupId: String by project
-val quarkusPlatformArtifactId: String by project
-val quarkusPlatformVersion: String by project
-
-dependencies {
-    implementation(enforcedPlatform("$quarkusPlatformGroupId:$quarkusPlatformArtifactId:$quarkusPlatformVersion"))
-    implementation("io.quarkus:quarkus-rest")
-    implementation("io.quarkus:quarkus-arc")
-    testImplementation("io.quarkus:quarkus-junit")
-    testImplementation("io.rest-assured:rest-assured")
-}
-
-group = "com.dgop92.ledger_v1"
-version = "1.0.0-SNAPSHOT"
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
-}
-
-tasks.withType<JavaCompile> {
-    options.encoding = "UTF-8"
-    options.compilerArgs.add("-parameters")
-}
-
-spotless {
-    java {
-        target("src/**/*.java")
-        googleJavaFormat()
-        cleanthat().sourceCompatibility("21")
-        forbidWildcardImports()
-        formatAnnotations()
+    repositories {
+        mavenCentral()
+        mavenLocal()
     }
-    kotlinGradle {
-        target("*.gradle.kts")
-        ktlint()
+
+    configure<SpotlessExtension> {
+        kotlinGradle {
+            target("*.gradle.kts")
+            ktlint()
+        }
+    }
+}
+
+subprojects {
+    apply(plugin = "java")
+
+    group = "com.dgop92.ledger_v1"
+    version = "1.0.0-SNAPSHOT"
+
+    extensions.configure<JavaPluginExtension> {
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
+    }
+
+    tasks.withType<JavaCompile> {
+        options.encoding = "UTF-8"
+        options.compilerArgs.add("-parameters")
+    }
+
+    tasks.withType<Test> {
+        useJUnitPlatform()
+    }
+
+    configure<SpotlessExtension> {
+        java {
+            target("src/**/*.java")
+            googleJavaFormat()
+            cleanthat().sourceCompatibility("21")
+            forbidWildcardImports()
+            formatAnnotations()
+        }
     }
 }
