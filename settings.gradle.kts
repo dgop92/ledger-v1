@@ -11,3 +11,5 @@ pluginManagement {
     }
 }
 rootProject.name = "ledger-v1"
+
+include(":domain", ":application", ":adapters", ":app", ":architecture-tests")
