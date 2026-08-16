@@ -419,7 +419,12 @@ class TransactionResourceTest {
             .body("id", notNullValue())
             .body("originalTransactionId", equalTo(transactionId))
             .body("journalEntries.size()", equalTo(2))
-            .body("journalEntries.direction", hasItems("DEBIT", "CREDIT"))
+            .body(
+                "journalEntries.find { it.accountId == '" + debitAccountId + "' }.direction",
+                equalTo("CREDIT"))
+            .body(
+                "journalEntries.find { it.accountId == '" + creditAccountId + "' }.direction",
+                equalTo("DEBIT"))
             .extract()
             .path("id");
 
@@ -431,7 +436,12 @@ class TransactionResourceTest {
         .body("id", equalTo(reversalId))
         .body("originalTransactionId", equalTo(transactionId))
         .body("journalEntries.size()", equalTo(2))
-        .body("journalEntries.direction", hasItems("DEBIT", "CREDIT"));
+        .body(
+            "journalEntries.find { it.accountId == '" + debitAccountId + "' }.direction",
+            equalTo("CREDIT"))
+        .body(
+            "journalEntries.find { it.accountId == '" + creditAccountId + "' }.direction",
+            equalTo("DEBIT"));
   }
 
   @Test
