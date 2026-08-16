@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.dgop92.ledger_v1.domain.account.AccountId;
 import com.dgop92.ledger_v1.domain.exception.AlreadyReversedException;
 import com.dgop92.ledger_v1.domain.exception.IdempotencyConflictException;
+import com.dgop92.ledger_v1.domain.exception.InvalidTransactionException;
 import com.dgop92.ledger_v1.domain.exception.TransactionNotFoundException;
 import com.dgop92.ledger_v1.domain.money.Money;
 import com.dgop92.ledger_v1.domain.port.IdGenerator;
@@ -98,6 +99,17 @@ class ReverseTransactionUseCaseTest {
         () ->
             useCase.execute(
                 new ReverseTransactionCommand(UUID.randomUUID().toString(), "reverse-key-2")));
+  }
+
+  @Test
+  void rejectsBlankIdempotencyKey() {
+    AccountId debitAccount = new AccountId(UUID.randomUUID());
+    AccountId creditAccount = new AccountId(UUID.randomUUID());
+    Transaction original = postOriginal(debitAccount, creditAccount, 1000);
+
+    assertThrows(
+        InvalidTransactionException.class,
+        () -> useCase.execute(new ReverseTransactionCommand(original.id().toString(), "  ")));
   }
 
   @Test

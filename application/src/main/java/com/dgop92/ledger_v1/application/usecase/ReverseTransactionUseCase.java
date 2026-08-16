@@ -2,6 +2,7 @@ package com.dgop92.ledger_v1.application.usecase;
 
 import com.dgop92.ledger_v1.domain.account.AccountId;
 import com.dgop92.ledger_v1.domain.exception.AlreadyReversedException;
+import com.dgop92.ledger_v1.domain.exception.InvalidTransactionException;
 import com.dgop92.ledger_v1.domain.exception.TransactionNotFoundException;
 import com.dgop92.ledger_v1.domain.port.IdGenerator;
 import com.dgop92.ledger_v1.domain.port.TransactionRepository;
@@ -42,6 +43,9 @@ public final class ReverseTransactionUseCase {
   public Transaction execute(ReverseTransactionCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     Objects.requireNonNull(command.idempotencyKey(), "idempotencyKey must not be null");
+    if (command.idempotencyKey().isBlank()) {
+      throw new InvalidTransactionException("idempotencyKey must not be blank");
+    }
 
     TransactionId originalId = parseTransactionId(command.originalTransactionId());
     Transaction original =
