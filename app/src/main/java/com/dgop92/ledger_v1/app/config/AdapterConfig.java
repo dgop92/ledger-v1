@@ -2,13 +2,16 @@ package com.dgop92.ledger_v1.app.config;
 
 import com.dgop92.ledger_v1.adapters.idgen.UuidV7IdGenerator;
 import com.dgop92.ledger_v1.adapters.persistence.JdbiAccountRepository;
+import com.dgop92.ledger_v1.adapters.persistence.JdbiJournalRepository;
 import com.dgop92.ledger_v1.adapters.persistence.JdbiTransactionRepository;
 import com.dgop92.ledger_v1.application.usecase.CreateAccountUseCase;
+import com.dgop92.ledger_v1.application.usecase.GetAccountBalanceUseCase;
 import com.dgop92.ledger_v1.application.usecase.GetAccountUseCase;
 import com.dgop92.ledger_v1.application.usecase.ListAccountsUseCase;
 import com.dgop92.ledger_v1.application.usecase.PostTransactionUseCase;
 import com.dgop92.ledger_v1.domain.port.AccountRepository;
 import com.dgop92.ledger_v1.domain.port.IdGenerator;
+import com.dgop92.ledger_v1.domain.port.JournalRepository;
 import com.dgop92.ledger_v1.domain.port.TransactionRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
@@ -67,5 +70,18 @@ public class AdapterConfig {
   public PostTransactionUseCase postTransactionUseCase(
       TransactionRepository transactionRepository, IdGenerator idGenerator) {
     return new PostTransactionUseCase(transactionRepository, idGenerator);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public JournalRepository journalRepository(Jdbi jdbi) {
+    return new JdbiJournalRepository(jdbi);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public GetAccountBalanceUseCase getAccountBalanceUseCase(
+      AccountRepository accountRepository, JournalRepository journalRepository) {
+    return new GetAccountBalanceUseCase(accountRepository, journalRepository);
   }
 }

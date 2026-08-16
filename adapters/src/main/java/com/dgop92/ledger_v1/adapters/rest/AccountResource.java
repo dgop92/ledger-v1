@@ -1,13 +1,16 @@
 package com.dgop92.ledger_v1.adapters.rest;
 
 import com.dgop92.ledger_v1.adapters.rest.dto.AccountResponse;
+import com.dgop92.ledger_v1.adapters.rest.dto.BalanceResponse;
 import com.dgop92.ledger_v1.adapters.rest.dto.CreateAccountRequest;
 import com.dgop92.ledger_v1.application.usecase.CreateAccountCommand;
 import com.dgop92.ledger_v1.application.usecase.CreateAccountUseCase;
+import com.dgop92.ledger_v1.application.usecase.GetAccountBalanceUseCase;
 import com.dgop92.ledger_v1.application.usecase.GetAccountUseCase;
 import com.dgop92.ledger_v1.application.usecase.ListAccountsUseCase;
 import com.dgop92.ledger_v1.domain.account.Account;
 import com.dgop92.ledger_v1.domain.account.AccountId;
+import com.dgop92.ledger_v1.domain.balance.Balance;
 import com.dgop92.ledger_v1.domain.exception.AccountNotFoundException;
 import com.dgop92.ledger_v1.domain.exception.InvalidAccountNameException;
 import jakarta.inject.Inject;
@@ -30,6 +33,8 @@ public class AccountResource {
   @Inject GetAccountUseCase getAccountUseCase;
 
   @Inject ListAccountsUseCase listAccountsUseCase;
+
+  @Inject GetAccountBalanceUseCase getAccountBalanceUseCase;
 
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
@@ -66,5 +71,19 @@ public class AccountResource {
     }
     Account account = getAccountUseCase.execute(accountId);
     return Response.ok(AccountResponse.fromDomain(account)).build();
+  }
+
+  @GET
+  @Path("/{id}/balance")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getAccountBalance(@PathParam("id") String id) {
+    AccountId accountId;
+    try {
+      accountId = new AccountId(UUID.fromString(id));
+    } catch (IllegalArgumentException e) {
+      throw new AccountNotFoundException(id);
+    }
+    Balance balance = getAccountBalanceUseCase.execute(accountId);
+    return Response.ok(BalanceResponse.fromDomain(balance)).build();
   }
 }

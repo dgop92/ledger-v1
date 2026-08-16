@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import io.quarkus.test.junit.QuarkusTest;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -148,6 +149,100 @@ class AccountResourceTest {
     given()
         .when()
         .get("/accounts/{id}", "not-a-uuid")
+        .then()
+        .statusCode(404)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("ACCOUNT_NOT_FOUND"));
+  }
+
+  @Test
+  void getsBalanceReflectingPostedTransaction() {
+    String debitAccountId =
+        given()
+            .contentType("application/json")
+            .body("{\"name\":\"Balance Debit Account\",\"accountType\":\"ASSET\"}")
+            .when()
+            .post("/accounts")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    String creditAccountId =
+        given()
+            .contentType("application/json")
+            .body("{\"name\":\"Balance Credit Account\",\"accountType\":\"LIABILITY\"}")
+            .when()
+            .post("/accounts")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    given()
+        .contentType("application/json")
+        .header("Idempotency-Key", UUID.randomUUID().toString())
+        .body(
+            "{\"entries\":["
+                + "{\"accountId\":\""
+                + debitAccountId
+                + "\",\"direction\":\"DEBIT\",\"amountMinorUnits\":1500},"
+                + "{\"accountId\":\""
+                + creditAccountId
+                + "\",\"direction\":\"CREDIT\",\"amountMinorUnits\":1500}"
+                + "]}")
+        .when()
+        .post("/transactions")
+        .then()
+        .statusCode(201);
+
+    given()
+        .when()
+        .get("/accounts/{id}/balance", debitAccountId)
+        .then()
+        .statusCode(200)
+        .body("accountId", equalTo(debitAccountId))
+        .body("amountMinorUnits", equalTo(1500))
+        .body("currencyCode", equalTo("USD"));
+
+    given()
+        .when()
+        .get("/accounts/{id}/balance", creditAccountId)
+        .then()
+        .statusCode(200)
+        .body("accountId", equalTo(creditAccountId))
+        .body("amountMinorUnits", equalTo(1500))
+        .body("currencyCode", equalTo("USD"));
+  }
+
+  @Test
+  void getsZeroBalanceForAccountWithNoEntries() {
+    String createdId =
+        given()
+            .contentType("application/json")
+            .body("{\"name\":\"No Entries Account\",\"accountType\":\"ASSET\"}")
+            .when()
+            .post("/accounts")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    given()
+        .when()
+        .get("/accounts/{id}/balance", createdId)
+        .then()
+        .statusCode(200)
+        .body("accountId", equalTo(createdId))
+        .body("amountMinorUnits", equalTo(0))
+        .body("currencyCode", equalTo("USD"));
+  }
+
+  @Test
+  void returnsNotFoundForBalanceOfUnknownAccount() {
+    given()
+        .when()
+        .get("/accounts/{id}/balance", "00000000-0000-0000-0000-000000000000")
         .then()
         .statusCode(404)
         .contentType(is("application/problem+json"))
