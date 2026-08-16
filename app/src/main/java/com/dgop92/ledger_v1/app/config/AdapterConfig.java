@@ -7,7 +7,9 @@ import com.dgop92.ledger_v1.adapters.persistence.JdbiTransactionRepository;
 import com.dgop92.ledger_v1.application.usecase.CreateAccountUseCase;
 import com.dgop92.ledger_v1.application.usecase.GetAccountBalanceUseCase;
 import com.dgop92.ledger_v1.application.usecase.GetAccountUseCase;
+import com.dgop92.ledger_v1.application.usecase.GetTransactionUseCase;
 import com.dgop92.ledger_v1.application.usecase.ListAccountsUseCase;
+import com.dgop92.ledger_v1.application.usecase.ListTransactionsUseCase;
 import com.dgop92.ledger_v1.application.usecase.PostTransactionUseCase;
 import com.dgop92.ledger_v1.domain.port.AccountRepository;
 import com.dgop92.ledger_v1.domain.port.IdGenerator;
@@ -70,6 +72,19 @@ public class AdapterConfig {
   public PostTransactionUseCase postTransactionUseCase(
       TransactionRepository transactionRepository, IdGenerator idGenerator) {
     return new PostTransactionUseCase(transactionRepository, idGenerator);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public GetTransactionUseCase getTransactionUseCase(TransactionRepository transactionRepository) {
+    return new GetTransactionUseCase(transactionRepository);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public ListTransactionsUseCase listTransactionsUseCase(
+      TransactionRepository transactionRepository) {
+    return new ListTransactionsUseCase(transactionRepository);
   }
 
   @Produces

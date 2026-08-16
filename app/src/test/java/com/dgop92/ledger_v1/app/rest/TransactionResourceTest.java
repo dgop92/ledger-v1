@@ -2,6 +2,8 @@ package com.dgop92.ledger_v1.app.rest;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -254,5 +256,138 @@ class TransactionResourceTest {
         .statusCode(409)
         .contentType(is("application/problem+json"))
         .body("errorCode", equalTo("IDEMPOTENCY_CONFLICT"));
+  }
+
+  @Test
+  void getsKnownTransaction() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String transactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 1000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    given()
+        .when()
+        .get("/transactions/{id}", transactionId)
+        .then()
+        .statusCode(200)
+        .body("id", equalTo(transactionId))
+        .body("journalEntries.size()", equalTo(2));
+  }
+
+  @Test
+  void returnsNotFoundForUnknownTransaction() {
+    given()
+        .when()
+        .get("/transactions/{id}", "00000000-0000-0000-0000-000000000000")
+        .then()
+        .statusCode(404)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("TRANSACTION_NOT_FOUND"));
+  }
+
+  @Test
+  void returnsNotFoundForMalformedTransactionId() {
+    given()
+        .when()
+        .get("/transactions/{id}", "not-a-uuid")
+        .then()
+        .statusCode(404)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("TRANSACTION_NOT_FOUND"));
+  }
+
+  @Test
+  void listsTransactionsForAccountWithMultipleTransactions() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String firstId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 100))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    String secondId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 200))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    given()
+        .queryParam("accountId", debitAccountId)
+        .when()
+        .get("/transactions")
+        .then()
+        .statusCode(200)
+        .body("id", hasItems(firstId, secondId));
+  }
+
+  @Test
+  void listsEmptyForAccountWithNoTransactions() {
+    String accountId = createAccount("ASSET");
+
+    given()
+        .queryParam("accountId", accountId)
+        .when()
+        .get("/transactions")
+        .then()
+        .statusCode(200)
+        .body("$", hasSize(0));
+  }
+
+  @Test
+  void listsEmptyForUnknownAccount() {
+    given()
+        .queryParam("accountId", UUID.randomUUID().toString())
+        .when()
+        .get("/transactions")
+        .then()
+        .statusCode(200)
+        .body("$", hasSize(0));
+  }
+
+  @Test
+  void returnsBadRequestWhenAccountIdMissing() {
+    given()
+        .when()
+        .get("/transactions")
+        .then()
+        .statusCode(400)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("MISSING_ACCOUNT_ID"));
+  }
+
+  @Test
+  void returnsBadRequestWhenAccountIdMalformed() {
+    given()
+        .queryParam("accountId", "not-a-uuid")
+        .when()
+        .get("/transactions")
+        .then()
+        .statusCode(400)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("INVALID_ACCOUNT_ID"));
   }
 }
