@@ -18,4 +18,8 @@ public record IdempotencyKey(String key, String operation, String payloadHash) {
   public static IdempotencyKey forPost(String key, String payloadHash) {
     return new IdempotencyKey(key, "POST", payloadHash);
   }
+
+  public static IdempotencyKey forReverse(String key, String payloadHash) {
+    return new IdempotencyKey(key, "REVERSE", payloadHash);
+  }
 }

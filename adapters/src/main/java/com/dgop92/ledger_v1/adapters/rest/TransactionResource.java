@@ -7,6 +7,8 @@ import com.dgop92.ledger_v1.application.usecase.GetTransactionUseCase;
 import com.dgop92.ledger_v1.application.usecase.ListTransactionsUseCase;
 import com.dgop92.ledger_v1.application.usecase.PostTransactionCommand;
 import com.dgop92.ledger_v1.application.usecase.PostTransactionUseCase;
+import com.dgop92.ledger_v1.application.usecase.ReverseTransactionCommand;
+import com.dgop92.ledger_v1.application.usecase.ReverseTransactionUseCase;
 import com.dgop92.ledger_v1.domain.account.AccountId;
 import com.dgop92.ledger_v1.domain.exception.InvalidTransactionException;
 import com.dgop92.ledger_v1.domain.exception.TransactionNotFoundException;
@@ -37,6 +39,8 @@ public class TransactionResource {
   @Inject GetTransactionUseCase getTransactionUseCase;
 
   @Inject ListTransactionsUseCase listTransactionsUseCase;
+
+  @Inject ReverseTransactionUseCase reverseTransactionUseCase;
 
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
@@ -82,6 +86,38 @@ public class TransactionResource {
         postTransactionUseCase.execute(new PostTransactionCommand(entries, idempotencyKey));
     return Response.status(Response.Status.CREATED)
         .entity(TransactionResponse.fromDomain(transaction))
+        .build();
+  }
+
+  @POST
+  @Path("/{id}/reverse")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response postReverseTransaction(
+      @PathParam("id") String id, @HeaderParam(IDEMPOTENCY_KEY_HEADER) String idempotencyKey) {
+    if (idempotencyKey == null || idempotencyKey.isBlank()) {
+      ProblemDetails problem =
+          new ProblemDetails(
+              "about:blank",
+              "Missing Idempotency Key",
+              Response.Status.BAD_REQUEST.getStatusCode(),
+              "The Idempotency-Key header is required",
+              "MISSING_IDEMPOTENCY_KEY");
+      return Response.status(Response.Status.BAD_REQUEST)
+          .type("application/problem+json")
+          .entity(problem)
+          .build();
+    }
+
+    try {
+      UUID.fromString(id);
+    } catch (IllegalArgumentException e) {
+      throw new TransactionNotFoundException(id);
+    }
+
+    Transaction reversal =
+        reverseTransactionUseCase.execute(new ReverseTransactionCommand(id, idempotencyKey));
+    return Response.status(Response.Status.CREATED)
+        .entity(TransactionResponse.fromDomain(reversal))
         .build();
   }
 

@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -389,5 +390,301 @@ class TransactionResourceTest {
         .statusCode(400)
         .contentType(is("application/problem+json"))
         .body("errorCode", equalTo("INVALID_ACCOUNT_ID"));
+  }
+
+  @Test
+  void reversesTransactionWithInvertedEntries() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String transactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 1000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    String reversalId =
+        given()
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .when()
+            .post("/transactions/{id}/reverse", transactionId)
+            .then()
+            .statusCode(201)
+            .body("id", notNullValue())
+            .body("originalTransactionId", equalTo(transactionId))
+            .body("journalEntries.size()", equalTo(2))
+            .body("journalEntries.direction", hasItems("DEBIT", "CREDIT"))
+            .extract()
+            .path("id");
+
+    given()
+        .when()
+        .get("/transactions/{id}", reversalId)
+        .then()
+        .statusCode(200)
+        .body("id", equalTo(reversalId))
+        .body("originalTransactionId", equalTo(transactionId))
+        .body("journalEntries.size()", equalTo(2))
+        .body("journalEntries.direction", hasItems("DEBIT", "CREDIT"));
+  }
+
+  @Test
+  void originalTransactionUnchangedAfterReversal() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String transactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 1000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    given()
+        .when()
+        .get("/transactions/{id}", transactionId)
+        .then()
+        .statusCode(200)
+        .body("id", equalTo(transactionId))
+        .body("journalEntries.size()", equalTo(2))
+        .body("originalTransactionId", is(nullValue()));
+
+    given()
+        .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+        .when()
+        .post("/transactions/{id}/reverse", transactionId)
+        .then()
+        .statusCode(201);
+
+    given()
+        .when()
+        .get("/transactions/{id}", transactionId)
+        .then()
+        .statusCode(200)
+        .body("id", equalTo(transactionId))
+        .body("journalEntries.size()", equalTo(2))
+        .body("originalTransactionId", is(nullValue()));
+  }
+
+  @Test
+  void reverseReturnsNotFoundForUnknownTransaction() {
+    given()
+        .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+        .when()
+        .post("/transactions/{id}/reverse", "00000000-0000-0000-0000-000000000000")
+        .then()
+        .statusCode(404)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("TRANSACTION_NOT_FOUND"));
+  }
+
+  @Test
+  void reverseReturnsNotFoundForMalformedTransactionId() {
+    given()
+        .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+        .when()
+        .post("/transactions/{id}/reverse", "not-a-uuid")
+        .then()
+        .statusCode(404)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("TRANSACTION_NOT_FOUND"));
+  }
+
+  @Test
+  void reverseRejectsMissingIdempotencyKey() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String transactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 1000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    given()
+        .when()
+        .post("/transactions/{id}/reverse", transactionId)
+        .then()
+        .statusCode(400)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("MISSING_IDEMPOTENCY_KEY"));
+  }
+
+  @Test
+  void reversingAlreadyReversedTransactionReturnsConflict() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String transactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 1000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    given()
+        .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+        .when()
+        .post("/transactions/{id}/reverse", transactionId)
+        .then()
+        .statusCode(201);
+
+    given()
+        .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+        .when()
+        .post("/transactions/{id}/reverse", transactionId)
+        .then()
+        .statusCode(409)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("ALREADY_REVERSED"));
+  }
+
+  @Test
+  void reversingAReversalReturnsConflict() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String transactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 1000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    String reversalId =
+        given()
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .when()
+            .post("/transactions/{id}/reverse", transactionId)
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    given()
+        .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+        .when()
+        .post("/transactions/{id}/reverse", reversalId)
+        .then()
+        .statusCode(409)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("ALREADY_REVERSED"));
+  }
+
+  @Test
+  void reverseIdempotentReplayReturnsSameResultWithoutDuplicate() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String transactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 1000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    String idempotencyKey = UUID.randomUUID().toString();
+
+    String firstReversalId =
+        given()
+            .header(IDEMPOTENCY_HEADER, idempotencyKey)
+            .when()
+            .post("/transactions/{id}/reverse", transactionId)
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    String secondReversalId =
+        given()
+            .header(IDEMPOTENCY_HEADER, idempotencyKey)
+            .when()
+            .post("/transactions/{id}/reverse", transactionId)
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    assertEquals(firstReversalId, secondReversalId);
+  }
+
+  @Test
+  void reverseIdempotencyConflictForDifferentOriginal() {
+    String debitAccountId = createAccount("ASSET");
+    String creditAccountId = createAccount("LIABILITY");
+
+    String firstTransactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 1000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    String secondTransactionId =
+        given()
+            .contentType("application/json")
+            .header(IDEMPOTENCY_HEADER, UUID.randomUUID().toString())
+            .body(transactionBody(debitAccountId, creditAccountId, 2000))
+            .when()
+            .post("/transactions")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id");
+
+    String idempotencyKey = UUID.randomUUID().toString();
+
+    given()
+        .header(IDEMPOTENCY_HEADER, idempotencyKey)
+        .when()
+        .post("/transactions/{id}/reverse", firstTransactionId)
+        .then()
+        .statusCode(201);
+
+    given()
+        .header(IDEMPOTENCY_HEADER, idempotencyKey)
+        .when()
+        .post("/transactions/{id}/reverse", secondTransactionId)
+        .then()
+        .statusCode(409)
+        .contentType(is("application/problem+json"))
+        .body("errorCode", equalTo("IDEMPOTENCY_CONFLICT"));
   }
 }

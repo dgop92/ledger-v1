@@ -1,6 +1,7 @@
 package com.dgop92.ledger_v1.adapters.persistence;
 
 import com.dgop92.ledger_v1.domain.account.AccountId;
+import com.dgop92.ledger_v1.domain.exception.AlreadyReversedException;
 import com.dgop92.ledger_v1.domain.exception.IdempotencyConflictException;
 import com.dgop92.ledger_v1.domain.exception.UnknownAccountException;
 import com.dgop92.ledger_v1.domain.money.Money;
@@ -31,9 +32,12 @@ public final class JdbiTransactionRepository implements TransactionRepository {
   private static final String FOREIGN_KEY_VIOLATION_SQL_STATE = "23503";
   private static final String IDEMPOTENCY_KEY_UNIQUE_CONSTRAINT =
       "uq_idempotency_keys_key_operation";
+  private static final String ORIGINAL_TRANSACTION_ID_UNIQUE_CONSTRAINT =
+      "uq_transactions_original_transaction_id";
 
   private static final String INSERT_TRANSACTION_SQL =
-      "insert into transactions (id, posted_at) values (:id, :postedAt)";
+      "insert into transactions (id, posted_at, original_transaction_id) "
+          + "values (:id, :postedAt, :originalTransactionId)";
 
   private static final String INSERT_JOURNAL_ENTRY_SQL =
       "insert into journal_entries (id, transaction_id, account_id, direction, amount_minor_units, currency) "
@@ -44,7 +48,7 @@ public final class JdbiTransactionRepository implements TransactionRepository {
           + "values (:key, :operation, :payloadHash, :transactionId)";
 
   private static final String SELECT_TRANSACTION_SQL =
-      "select posted_at from transactions where id = :id";
+      "select posted_at, original_transaction_id from transactions where id = :id";
 
   private static final String SELECT_JOURNAL_ENTRIES_SQL =
       "select id, account_id, direction, amount_minor_units, currency from journal_entries "
@@ -92,9 +96,13 @@ public final class JdbiTransactionRepository implements TransactionRepository {
     } catch (RuntimeException e) {
       Optional<SQLException> sqlException = findSqlException(e);
       if (sqlException.isPresent()
-          && UNIQUE_VIOLATION_SQL_STATE.equals(sqlException.get().getSQLState())
-          && isIdempotencyKeyConstraintViolation(sqlException.get())) {
-        return resolveIdempotencyConflict(idempotencyKey);
+          && UNIQUE_VIOLATION_SQL_STATE.equals(sqlException.get().getSQLState())) {
+        if (isIdempotencyKeyConstraintViolation(sqlException.get())) {
+          return resolveIdempotencyConflict(idempotencyKey);
+        }
+        if (isOriginalTransactionIdConstraintViolation(sqlException.get())) {
+          return resolveOriginalTransactionIdConflict(idempotencyKey, transaction);
+        }
       }
       if (sqlException.isPresent()
           && FOREIGN_KEY_VIOLATION_SQL_STATE.equals(sqlException.get().getSQLState())) {
@@ -109,8 +117,8 @@ public final class JdbiTransactionRepository implements TransactionRepository {
     Objects.requireNonNull(id, "id must not be null");
     return jdbi.withHandle(
         handle ->
-            findPostedAt(handle, id.value())
-                .map(postedAt -> fetchTransaction(handle, id.value(), postedAt)));
+            findTransactionHeader(handle, id.value())
+                .map(header -> fetchTransaction(handle, id.value(), header)));
   }
 
   @Override
@@ -133,6 +141,10 @@ public final class JdbiTransactionRepository implements TransactionRepository {
         .createUpdate(INSERT_TRANSACTION_SQL)
         .bind("id", transaction.id().value())
         .bind("postedAt", transaction.postedAt())
+        .bindByType(
+            "originalTransactionId",
+            transaction.originalTransactionId().map(TransactionId::value).orElse(null),
+            UUID.class)
         .execute();
   }
 
@@ -195,19 +207,62 @@ public final class JdbiTransactionRepository implements TransactionRepository {
   }
 
   /**
+   * Resolves a unique-violation on {@code original_transaction_id}: this constraint fires at
+   * row-insert time, before an idempotency-key row would ever be written, so a legitimate REVERSE
+   * replay (same key, same original, same derived payload) must not be misclassified as {@link
+   * AlreadyReversedException}. Re-checks the idempotency-key row first: a matching hash means this
+   * is a replay, so the original persisted reversal is returned; a mismatched hash is an {@link
+   * IdempotencyConflictException}. Only when no idempotency-key row exists for this key+operation
+   * at all do we conclude the original has genuinely already been reversed by a different request.
+   */
+  private Transaction resolveOriginalTransactionIdConflict(
+      IdempotencyKey idempotencyKey, Transaction attemptedReversal) {
+    return jdbi.withHandle(
+        handle -> {
+          Optional<ExistingIdempotencyRow> existing =
+              handle
+                  .createQuery(SELECT_IDEMPOTENCY_KEY_SQL)
+                  .bind("key", idempotencyKey.key())
+                  .bind("operation", idempotencyKey.operation())
+                  .map(
+                      (rs, ctx) ->
+                          new ExistingIdempotencyRow(
+                              rs.getString("payload_hash"),
+                              rs.getObject("transaction_id", UUID.class)))
+                  .findOne();
+
+          if (existing.isPresent()) {
+            ExistingIdempotencyRow row = existing.get();
+            if (!row.payloadHash().equals(idempotencyKey.payloadHash())) {
+              throw new IdempotencyConflictException(idempotencyKey.key());
+            }
+            return fetchTransaction(handle, row.transactionId());
+          }
+
+          String originalTransactionId =
+              attemptedReversal
+                  .originalTransactionId()
+                  .map(TransactionId::toString)
+                  .orElse("unknown");
+          throw new AlreadyReversedException(originalTransactionId);
+        });
+  }
+
+  /**
    * Rehydrates a {@link Transaction} from its persisted rows. The journal-entries SELECT includes
    * the {@code id} column, so replay/reads reconstruct the exact persisted {@link JournalEntryId}s
    * rather than minting new ones.
    */
   private Transaction fetchTransaction(Handle handle, UUID transactionId) {
-    Instant postedAt =
-        findPostedAt(handle, transactionId)
+    TransactionHeader header =
+        findTransactionHeader(handle, transactionId)
             .orElseThrow(
                 () -> new IllegalStateException("transaction not found: " + transactionId));
-    return fetchTransaction(handle, transactionId, postedAt);
+    return fetchTransaction(handle, transactionId, header);
   }
 
-  private Transaction fetchTransaction(Handle handle, UUID transactionId, Instant postedAt) {
+  private Transaction fetchTransaction(
+      Handle handle, UUID transactionId, TransactionHeader header) {
     List<JournalEntryDraft> drafts =
         handle
             .createQuery(SELECT_JOURNAL_ENTRIES_SQL)
@@ -217,14 +272,23 @@ public final class JdbiTransactionRepository implements TransactionRepository {
 
     List<AccountId> accountIds = drafts.stream().map(JournalEntryDraft::accountId).toList();
 
-    return Transaction.balanced(new TransactionId(transactionId), postedAt, accountIds, drafts);
+    return Transaction.balanced(
+        new TransactionId(transactionId),
+        header.postedAt(),
+        accountIds,
+        drafts,
+        header.originalTransactionId().map(TransactionId::new));
   }
 
-  private Optional<Instant> findPostedAt(Handle handle, UUID transactionId) {
+  private Optional<TransactionHeader> findTransactionHeader(Handle handle, UUID transactionId) {
     return handle
         .createQuery(SELECT_TRANSACTION_SQL)
         .bind("id", transactionId)
-        .map((rs, ctx) -> rs.getTimestamp("posted_at").toInstant())
+        .map(
+            (rs, ctx) ->
+                new TransactionHeader(
+                    rs.getTimestamp("posted_at").toInstant(),
+                    Optional.ofNullable(rs.getObject("original_transaction_id", UUID.class))))
         .findOne();
   }
 
@@ -236,6 +300,15 @@ public final class JdbiTransactionRepository implements TransactionRepository {
   private static boolean isIdempotencyKeyConstraintViolation(SQLException sqlException) {
     String message = sqlException.getMessage();
     return message != null && message.contains(IDEMPOTENCY_KEY_UNIQUE_CONSTRAINT);
+  }
+
+  /**
+   * Only treat a 23505 unique-violation as an already-reversed conflict when it actually names the
+   * {@code original_transaction_id} uniqueness constraint.
+   */
+  private static boolean isOriginalTransactionIdConstraintViolation(SQLException sqlException) {
+    String message = sqlException.getMessage();
+    return message != null && message.contains(ORIGINAL_TRANSACTION_ID_UNIQUE_CONSTRAINT);
   }
 
   private static Optional<SQLException> findSqlException(Throwable throwable) {
@@ -250,4 +323,6 @@ public final class JdbiTransactionRepository implements TransactionRepository {
   }
 
   private record ExistingIdempotencyRow(String payloadHash, UUID transactionId) {}
+
+  private record TransactionHeader(Instant postedAt, Optional<UUID> originalTransactionId) {}
 }

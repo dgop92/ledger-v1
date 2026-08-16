@@ -11,6 +11,7 @@ import com.dgop92.ledger_v1.application.usecase.GetTransactionUseCase;
 import com.dgop92.ledger_v1.application.usecase.ListAccountsUseCase;
 import com.dgop92.ledger_v1.application.usecase.ListTransactionsUseCase;
 import com.dgop92.ledger_v1.application.usecase.PostTransactionUseCase;
+import com.dgop92.ledger_v1.application.usecase.ReverseTransactionUseCase;
 import com.dgop92.ledger_v1.domain.port.AccountRepository;
 import com.dgop92.ledger_v1.domain.port.IdGenerator;
 import com.dgop92.ledger_v1.domain.port.JournalRepository;
@@ -72,6 +73,13 @@ public class AdapterConfig {
   public PostTransactionUseCase postTransactionUseCase(
       TransactionRepository transactionRepository, IdGenerator idGenerator) {
     return new PostTransactionUseCase(transactionRepository, idGenerator);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public ReverseTransactionUseCase reverseTransactionUseCase(
+      TransactionRepository transactionRepository, IdGenerator idGenerator) {
+    return new ReverseTransactionUseCase(transactionRepository, idGenerator);
   }
 
   @Produces
