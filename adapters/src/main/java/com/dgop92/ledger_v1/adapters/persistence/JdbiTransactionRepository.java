@@ -53,6 +53,13 @@ public final class JdbiTransactionRepository implements TransactionRepository {
   private static final String SELECT_IDEMPOTENCY_KEY_SQL =
       "select payload_hash, transaction_id from idempotency_keys where key = :key and operation = :operation";
 
+  // DISTINCT is required: a Transaction may have multiple Journal Entry legs against the same
+  // Account, which would otherwise duplicate that transaction's id once per matching leg.
+  private static final String SELECT_TRANSACTION_IDS_BY_ACCOUNT_ID_SQL =
+      "select distinct t.id from transactions t "
+          + "join journal_entries je on je.transaction_id = t.id "
+          + "where je.account_id = :accountId order by t.id";
+
   private static final RowMapper<JournalEntryDraft> JOURNAL_ENTRY_DRAFT_ROW_MAPPER =
       (rs, ctx) ->
           new JournalEntryDraft(
@@ -95,6 +102,30 @@ public final class JdbiTransactionRepository implements TransactionRepository {
       }
       throw e;
     }
+  }
+
+  @Override
+  public Optional<Transaction> findById(TransactionId id) {
+    Objects.requireNonNull(id, "id must not be null");
+    return jdbi.withHandle(
+        handle ->
+            findPostedAt(handle, id.value())
+                .map(postedAt -> fetchTransaction(handle, id.value(), postedAt)));
+  }
+
+  @Override
+  public List<Transaction> findByAccountId(AccountId id) {
+    Objects.requireNonNull(id, "id must not be null");
+    return jdbi.withHandle(
+        handle -> {
+          List<UUID> transactionIds =
+              handle
+                  .createQuery(SELECT_TRANSACTION_IDS_BY_ACCOUNT_ID_SQL)
+                  .bind("accountId", id.value())
+                  .mapTo(UUID.class)
+                  .list();
+          return transactionIds.stream().map(txId -> fetchTransaction(handle, txId)).toList();
+        });
   }
 
   private void insertTransaction(Handle handle, Transaction transaction) {
@@ -170,12 +201,13 @@ public final class JdbiTransactionRepository implements TransactionRepository {
    */
   private Transaction fetchTransaction(Handle handle, UUID transactionId) {
     Instant postedAt =
-        handle
-            .createQuery(SELECT_TRANSACTION_SQL)
-            .bind("id", transactionId)
-            .map((rs, ctx) -> rs.getTimestamp("posted_at").toInstant())
-            .one();
+        findPostedAt(handle, transactionId)
+            .orElseThrow(
+                () -> new IllegalStateException("transaction not found: " + transactionId));
+    return fetchTransaction(handle, transactionId, postedAt);
+  }
 
+  private Transaction fetchTransaction(Handle handle, UUID transactionId, Instant postedAt) {
     List<JournalEntryDraft> drafts =
         handle
             .createQuery(SELECT_JOURNAL_ENTRIES_SQL)
@@ -186,6 +218,14 @@ public final class JdbiTransactionRepository implements TransactionRepository {
     List<AccountId> accountIds = drafts.stream().map(JournalEntryDraft::accountId).toList();
 
     return Transaction.balanced(new TransactionId(transactionId), postedAt, accountIds, drafts);
+  }
+
+  private Optional<Instant> findPostedAt(Handle handle, UUID transactionId) {
+    return handle
+        .createQuery(SELECT_TRANSACTION_SQL)
+        .bind("id", transactionId)
+        .map((rs, ctx) -> rs.getTimestamp("posted_at").toInstant())
+        .findOne();
   }
 
   /**

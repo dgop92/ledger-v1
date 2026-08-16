@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dgop92.ledger_v1.domain.account.Account;
 import com.dgop92.ledger_v1.domain.account.AccountId;
@@ -26,6 +27,7 @@ import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.Currency;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -184,5 +186,73 @@ class JdbiTransactionRepositoryTest {
     assertThrows(
         IdempotencyConflictException.class,
         () -> transactionRepository.append(second, new IdempotencyKey(key, "POST", "hash-b")));
+  }
+
+  @Test
+  void findByIdReturnsKnownTransaction() {
+    AccountId debitAccount = createAccount(AccountType.ASSET);
+    AccountId creditAccount = createAccount(AccountType.LIABILITY);
+    Transaction transaction = buildTransaction(debitAccount, creditAccount, 1000);
+    IdempotencyKey idempotencyKey =
+        new IdempotencyKey(UUID.randomUUID().toString(), "POST", "hash-" + UUID.randomUUID());
+    Transaction persisted = transactionRepository.append(transaction, idempotencyKey);
+
+    Optional<Transaction> found = transactionRepository.findById(persisted.id());
+
+    assertTrue(found.isPresent());
+    assertEquals(persisted.id(), found.get().id());
+    assertEquals(2, found.get().entries().size());
+  }
+
+  @Test
+  void findByIdReturnsEmptyForUnknownTransaction() {
+    TransactionId unknownId = new TransactionId(UUID.randomUUID());
+
+    Optional<Transaction> found = transactionRepository.findById(unknownId);
+
+    assertTrue(found.isEmpty());
+  }
+
+  @Test
+  void findByAccountIdReturnsTransactionsInPostingOrder() {
+    AccountId account = createAccount(AccountType.ASSET);
+    AccountId otherAccount = createAccount(AccountType.LIABILITY);
+
+    Transaction first =
+        transactionRepository.append(
+            buildTransaction(account, otherAccount, 100),
+            new IdempotencyKey(UUID.randomUUID().toString(), "POST", "hash-" + UUID.randomUUID()));
+    Transaction second =
+        transactionRepository.append(
+            buildTransaction(account, otherAccount, 200),
+            new IdempotencyKey(UUID.randomUUID().toString(), "POST", "hash-" + UUID.randomUUID()));
+    Transaction third =
+        transactionRepository.append(
+            buildTransaction(account, otherAccount, 300),
+            new IdempotencyKey(UUID.randomUUID().toString(), "POST", "hash-" + UUID.randomUUID()));
+
+    List<Transaction> found = transactionRepository.findByAccountId(account);
+
+    List<TransactionId> expectedOrder = List.of(first.id(), second.id(), third.id());
+    List<TransactionId> actualOrder = found.stream().map(Transaction::id).toList();
+    assertEquals(expectedOrder, actualOrder);
+  }
+
+  @Test
+  void findByAccountIdReturnsEmptyListForAccountWithNoTransactions() {
+    AccountId account = createAccount(AccountType.ASSET);
+
+    List<Transaction> found = transactionRepository.findByAccountId(account);
+
+    assertTrue(found.isEmpty());
+  }
+
+  @Test
+  void findByAccountIdReturnsEmptyListForUnknownAccount() {
+    AccountId unknownAccount = new AccountId(UUID.randomUUID());
+
+    List<Transaction> found = transactionRepository.findByAccountId(unknownAccount);
+
+    assertTrue(found.isEmpty());
   }
 }
