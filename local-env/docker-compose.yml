@@ -1,0 +1,31 @@
+# Dedicated local Postgres for `./gradlew quarkusDev`.
+# Tests do NOT use this: they rely on Quarkus Dev Services (throwaway DB per run).
+#
+# Start:  docker compose -f local-env/docker-compose.yml up -d --wait
+# Stop:   docker compose -f local-env/docker-compose.yml stop
+# Remove: docker compose -f local-env/docker-compose.yml down      (keeps data)
+# Wipe:   docker compose -f local-env/docker-compose.yml down -v   (deletes data)
+name: ledger-v1
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: ledger-v1-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${LEDGER_DB_NAME:-ledger}
+      POSTGRES_USER: ${LEDGER_DB_USER:-ledger}
+      POSTGRES_PASSWORD: ${LEDGER_DB_PASSWORD:-ledger}
+    ports:
+      - "127.0.0.1:${LEDGER_DB_PORT:-5432}:5432"
+    volumes:
+      # Postgres 18+ stores data under a versioned subdirectory of /var/lib/postgresql
+      - ledger_v1_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  ledger_v1_pgdata:
