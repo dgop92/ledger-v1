@@ -4,7 +4,7 @@ import java.util.Objects;
 
 /**
  * Input to {@link com.dgop92.ledger_v1.domain.port.TransactionRepository#append}, carrying the
- * client-submitted idempotency key, the operation it applies to (this story always {@code "POST"}),
+ * client-submitted idempotency key, the operation it applies to (currently always {@code "POST"}),
  * and the payload hash to persist/compare on conflict.
  */
 public record IdempotencyKey(String key, String operation, String payloadHash) {

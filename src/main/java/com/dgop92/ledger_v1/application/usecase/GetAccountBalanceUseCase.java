@@ -18,8 +18,8 @@ import java.util.Objects;
 public final class GetAccountBalanceUseCase {
 
   /**
-   * This story does not yet model per-account currency; an Account with no Journal Entries returns
-   * a zero Balance minted in this fixed default currency.
+   * Per-account currency is not modeled yet; an Account with no Journal Entries returns a zero
+   * Balance minted in this fixed default currency.
    */
   private static final Currency DEFAULT_CURRENCY = Currency.getInstance("USD");
 

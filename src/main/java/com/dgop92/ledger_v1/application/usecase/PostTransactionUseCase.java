@@ -39,8 +39,8 @@ public final class PostTransactionUseCase {
   private static final long MAX_AMOUNT_MINOR_UNITS = Long.MAX_VALUE / MAX_ENTRY_COUNT;
 
   /**
-   * This story does not yet model per-account currency; every Money amount is minted in this fixed
-   * default currency.
+   * Per-account currency is not modeled yet; every Money amount is minted in this fixed default
+   * currency.
    */
   private static final Currency DEFAULT_CURRENCY = Currency.getInstance("USD");
 

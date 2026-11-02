@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 /**
  * The canonical, hashable shape of a Transaction's raw posting fields, computed from raw request
- * fields before any domain object is constructed. Reused unchanged by Epic 3's reversal flow.
+ * fields before any domain object is constructed. Reusable by the reversal flow.
  */
 public record PostingPayload(List<Entry> entries) {
 

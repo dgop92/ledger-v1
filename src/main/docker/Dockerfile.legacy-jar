@@ -7,7 +7,7 @@
 #
 # Then, build the image with:
 #
-# docker build -f app/src/main/docker/Dockerfile.legacy-jar -t quarkus/ledger-v1-legacy-jar .
+# docker build -f src/main/docker/Dockerfile.legacy-jar -t quarkus/ledger-v1-legacy-jar .
 #
 # Then run the container using:
 #
@@ -85,8 +85,8 @@ FROM registry.access.redhat.com/ubi9/openjdk-25-runtime:1.24
 ENV LANGUAGE='en_US:en'
 
 
-COPY app/build/lib/* /deployments/lib/
-COPY app/build/*-runner.jar /deployments/quarkus-run.jar
+COPY build/lib/* /deployments/lib/
+COPY build/*-runner.jar /deployments/quarkus-run.jar
 
 EXPOSE 8080
 USER 185

@@ -28,9 +28,6 @@ dependencies {
     implementation("io.quarkus:quarkus-jdbc-postgresql")
     implementation("io.quarkus:quarkus-flyway")
 
-    implementation("jakarta.ws.rs:jakarta.ws.rs-api")
-    implementation("jakarta.inject:jakarta.inject-api")
-
     implementation("org.jdbi:jdbi3-core:3.54.0")
     implementation("org.jdbi:jdbi3-postgres:3.54.0")
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")
