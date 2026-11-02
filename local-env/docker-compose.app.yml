@@ -1,0 +1,48 @@
+# Runs the service from its container image plus its own Postgres.
+# Independent from local-env/docker-compose.yml (the dev DB used by `./gradlew quarkusDev`).
+#
+# Prerequisites:
+#   ./gradlew build -x test   (Dockerfile.jvm copies build/quarkus-app)
+#   create local-env/envs-vars/.env (git-ignored) with LEDGER_DB_NAME, LEDGER_DB_USER,
+#   LEDGER_DB_PASSWORD, APP_PORT; unset variables fall back to the defaults below
+#
+# Start:  docker compose --env-file local-env/envs-vars/.env -f local-env/docker-compose.app.yml up -d --build --wait
+# Logs:   docker compose --env-file local-env/envs-vars/.env -f local-env/docker-compose.app.yml logs -f app
+# Stop:   docker compose --env-file local-env/envs-vars/.env -f local-env/docker-compose.app.yml down      (keeps data)
+# Wipe:   docker compose --env-file local-env/envs-vars/.env -f local-env/docker-compose.app.yml down -v   (deletes data)
+name: ledger-v1-app
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${LEDGER_DB_NAME:-ledger}
+      POSTGRES_USER: ${LEDGER_DB_USER:-ledger}
+      POSTGRES_PASSWORD: ${LEDGER_DB_PASSWORD:-ledger}
+    volumes:
+      - ledger_v1_app_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: src/main/docker/Dockerfile.jvm
+    image: ledger-v1:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${LEDGER_DB_NAME:-ledger}
+      DB_USERNAME: ${LEDGER_DB_USER:-ledger}
+      DB_PASSWORD: ${LEDGER_DB_PASSWORD:-ledger}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+
+volumes:
+  ledger_v1_app_pgdata:
