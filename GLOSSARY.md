@@ -10,6 +10,8 @@
 - **Balance** — An Account's current position, computed on demand by summing that Account's Journal Entries — never stored or cached.
 - **Minor Unit** — The smallest indivisible unit of the system's currency (e.g., cents). All amounts are integers in minor units; floating point is never used.
 - **Minor-Unit Exponent** — The number of minor-unit digits for the system's currency (e.g., 2 for cents), modeled explicitly even though v1 supports exactly one currency.
-- **Idempotency Key** — A client-supplied unique token required on every transaction-posting command (Post Transaction, Reverse Transaction), guaranteeing a retried request does not double-post.
-- **Reversal / Compensating Entry** — The sole correction mechanism: a new Transaction that references an original Transaction and reverses its effect. The original Transaction is never edited or deleted.
+- **Idempotency Key** — A client-supplied unique token required on every transaction-posting command (Post Transaction, Reverse Transaction), guaranteeing a retried request does not double-post. Resubmitting the same key with the same payload replays the original result; the same key with a different payload is a conflict. A key is scoped per operation, so the same value may be used once for a post and once for a reversal.
+- **Reversal / Compensating Entry** — The sole correction mechanism: a new Transaction that references an Original Transaction and reverses its effect. The Original Transaction is never edited or deleted.
+- **Original Transaction** — The previously posted Transaction that a Reversal refers to. A Transaction can be reversed at most once, and a Reversal cannot itself be reversed.
+- **Normal Balance** — The direction (debit or credit) that increases an Account's Balance, determined by its Account Type.
 

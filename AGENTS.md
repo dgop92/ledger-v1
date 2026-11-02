@@ -2,7 +2,7 @@
 
 Quarkus (Java 25) backend for a financial ledger. Hexagonal (ports and adapters) design: domain, use cases, Jdbi/Postgres adapters, Flyway migrations, REST resources.
 
-Domain terms: use the exact names in [GLOSSARY.md](GLOSSARY.md). Setup and local database: [README.md](README.md). Opening PRs: use the `creating-pull-requests` skill in `.agents/skills`.
+Domain terms: use the exact names in [GLOSSARY.md](GLOSSARY.md). Why key design decisions were made: [docs/adr/](docs/adr/). Setup and local database: [README.md](README.md). Opening PRs: use the `creating-pull-requests` skill in `.agents/skills`.
 
 ## Build and Test Commands
 
