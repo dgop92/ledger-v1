@@ -1,0 +1,7 @@
+# Shared config. Per-profile overrides live in application-{profile}.yaml.
+# There is intentionally no application-test.yaml so tests keep using Dev Services.
+quarkus:
+  datasource:
+    db-kind: postgresql
+  flyway:
+    migrate-at-start: true

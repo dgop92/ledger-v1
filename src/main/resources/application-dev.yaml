@@ -1,0 +1,10 @@
+# Dev: dedicated local Postgres from local-env/docker-compose.yml (no Dev Services).
+# Defaults match the compose file; override with DB_URL / DB_USERNAME / DB_PASSWORD.
+quarkus:
+  datasource:
+    devservices:
+      enabled: false
+    jdbc:
+      url: ${DB_URL:jdbc:postgresql://localhost:5432/ledger}
+    username: ${DB_USERNAME:ledger}
+    password: ${DB_PASSWORD:ledger}
