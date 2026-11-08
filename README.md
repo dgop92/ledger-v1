@@ -53,3 +53,15 @@ docker compose --env-file local-env/envs-vars/.env -f local-env/docker-compose.a
 ```
 
 The service listens on `http://localhost:8080` (override with `APP_PORT`). The stack has its own Postgres and volume, so it can run next to the dev database; it uses the same `LEDGER_DB_*` variable names. To build only the image: `docker build -f src/main/docker/Dockerfile.jvm -t ledger-v1:local .`
+
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request to `main` and every push to `main`, as three parallel checks:
+
+| Check | Local equivalent |
+|-------|------------------|
+| `compile` | `./gradlew compileJava compileTestJava` |
+| `format` | `./gradlew spotlessCheck` (fix with `./gradlew spotlessApply`) |
+| `test` | `./gradlew test` (needs Docker) |
+
+When `test` fails, the Gradle test reports are uploaded as the `test-reports` artifact.
