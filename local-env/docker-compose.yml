@@ -9,7 +9,9 @@ name: ledger-v1
 
 services:
   postgres:
-    image: postgres:18
+    # Pinned to minor; keep in sync with docker-compose.app.yml and
+    # quarkus.datasource.devservices.image-name in application.yaml.
+    image: postgres:18.1
     container_name: ledger-v1-db
     restart: unless-stopped
     environment:
