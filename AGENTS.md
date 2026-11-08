@@ -43,3 +43,17 @@ Schema changes go in new Flyway migrations under `src/main/resources/db/migratio
 
 - Never hard-code secrets; use `application.properties` placeholders resolved from environment variables.
 - This is a financial ledger — treat monetary amounts, account identifiers, and transaction data as sensitive; do not log them.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `dgop92/ledger-v1` (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
