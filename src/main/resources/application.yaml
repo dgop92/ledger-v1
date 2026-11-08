@@ -3,5 +3,8 @@
 quarkus:
   datasource:
     db-kind: postgresql
+    devservices:
+      # Keep in sync with the postgres image in local-env/docker-compose*.yml.
+      image-name: postgres:18.1
   flyway:
     migrate-at-start: true
