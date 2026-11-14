@@ -18,13 +18,7 @@ public final class AccountId {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof AccountId other)) {
-      return false;
-    }
-    return value.equals(other.value);
+    return this == o || o instanceof AccountId other && value.equals(other.value);
   }
 
   @Override

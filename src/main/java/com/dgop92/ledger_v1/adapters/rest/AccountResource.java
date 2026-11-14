@@ -62,6 +62,8 @@ public class AccountResource {
   @GET
   @Path("/{id}")
   @Produces(MediaType.APPLICATION_JSON)
+  // Malformed id is deliberately reported as not found; the parse failure carries no useful cause.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   public Response getAccount(@PathParam("id") String id) {
     AccountId accountId;
     try {
@@ -76,6 +78,8 @@ public class AccountResource {
   @GET
   @Path("/{id}/balance")
   @Produces(MediaType.APPLICATION_JSON)
+  // Malformed id is deliberately reported as not found; the parse failure carries no useful cause.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   public Response getAccountBalance(@PathParam("id") String id) {
     AccountId accountId;
     try {
