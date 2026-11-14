@@ -3,6 +3,7 @@ import com.diffplug.gradle.spotless.SpotlessExtension
 plugins {
     java
     jacoco
+    pmd
     id("io.quarkus")
     id("com.diffplug.spotless") version "8.8.0"
 }
@@ -109,6 +110,20 @@ tasks.jacocoTestCoverageVerification {
 tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification, tasks.jacocoTestReport)
 }
+
+// PMD is report-only for now: findings are printed and written to build/reports/pmd but do
+// not fail the build. Enforcement comes after a trial period. Only main sources are analyzed.
+// Baseline measured 2026-11-14: 14 findings on main.
+// PMD is pinned explicitly: Gradle's default is PMD 6, which cannot parse Java 25.
+pmd {
+    toolVersion = "7.29.0"
+    isConsoleOutput = true
+    isIgnoreFailures = true
+    ruleSetFiles = files("config/pmd/ruleset.xml")
+    ruleSets = emptyList()
+}
+
+tasks.named("pmdTest") { enabled = false }
 
 configure<SpotlessExtension> {
     kotlinGradle {
