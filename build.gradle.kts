@@ -82,8 +82,11 @@ tasks.jacocoTestReport {
 }
 
 // Coverage ratchet: floors only move up. Lowering one needs justification in the PR.
+// Baseline measured 2026-11-14: line 94.7% (floor 94%), branch 72.7% (floor 72%).
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
+    // Generate the report first so CI can still upload it when the gate fails.
+    mustRunAfter(tasks.jacocoTestReport)
     classDirectories.setFrom(coverageClassDirectories)
     violationRules {
         rule {
