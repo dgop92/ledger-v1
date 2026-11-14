@@ -62,6 +62,10 @@ The service listens on `http://localhost:8080` (override with `APP_PORT`). The s
 |-------|------------------|
 | `compile` | `./gradlew compileJava compileTestJava` |
 | `format` | `./gradlew spotlessCheck` (fix with `./gradlew spotlessApply`) |
-| `test` | `./gradlew test` (needs Docker) |
+| `test` | `./gradlew check` (tests plus coverage gate; needs Docker) |
 
-When `test` fails, the Gradle test reports are uploaded as the `test-reports` artifact.
+When `test` fails, the Gradle test reports are uploaded as the `test-reports` artifact. The JaCoCo HTML report is uploaded as `coverage-report` on every run.
+
+## Coverage
+
+`./gradlew build` (via `check`) fails if line or branch coverage drops below the floors in `build.gradle.kts`. Reports: `build/reports/jacoco/test/html/index.html` and `build/reports/jacoco/test/jacocoTestReport.xml`. `app/config` is excluded.

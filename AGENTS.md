@@ -18,6 +18,8 @@ Run commands from the repo root; Gradle wrapper (`./gradlew`) is checked in, don
 
 `./gradlew build` is the main verification command when implementing tasks — it runs compilation, Spotless formatting checks, and all tests (`build` depends on `check`, so a separate `./gradlew check` is redundant).
 
+`build` also enforces a JaCoCo coverage gate (global line and branch floors in `build.gradle.kts`, `app/config` excluded). Floors only go up; lowering one needs explicit justification in the PR.
+
 Tests and `build` require Docker running (Quarkus Dev Services starts a Testcontainers Postgres). Dev mode uses a local Postgres from `local-env/docker-compose.yml` (see README.md).
 
 ## Architecture
