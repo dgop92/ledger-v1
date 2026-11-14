@@ -95,6 +95,8 @@ public final class PostTransactionUseCase {
     return transactionRepository.append(transaction, idempotencyKey);
   }
 
+  // The client-facing message replaces the parse failure; the cause adds nothing.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   private AccountId parseAccountId(String rawAccountId) {
     if (rawAccountId == null) {
       throw new InvalidTransactionException("accountId must not be null");
@@ -106,6 +108,8 @@ public final class PostTransactionUseCase {
     }
   }
 
+  // The client-facing message replaces the parse failure; the cause adds nothing.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   private Direction parseDirection(String rawDirection) {
     if (rawDirection == null) {
       throw new InvalidTransactionException("direction must not be null");
@@ -117,6 +121,8 @@ public final class PostTransactionUseCase {
     }
   }
 
+  // The client-facing message replaces the parse failure; the cause adds nothing.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   private long validateAmount(BigDecimal rawAmount) {
     if (rawAmount == null) {
       throw new InvalidTransactionException("amountMinorUnits must not be null");

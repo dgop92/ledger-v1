@@ -149,18 +149,19 @@ public final class JdbiTransactionRepository implements TransactionRepository {
   }
 
   private void insertJournalEntries(Handle handle, Transaction transaction) {
-    PreparedBatch batch = handle.prepareBatch(INSERT_JOURNAL_ENTRY_SQL);
-    for (JournalEntry entry : transaction.entries()) {
-      batch
-          .bind("id", entry.id().value())
-          .bind("transactionId", transaction.id().value())
-          .bind("accountId", entry.accountId().value())
-          .bind("direction", entry.direction().name())
-          .bind("amountMinorUnits", entry.amount().amountMinorUnits())
-          .bind("currency", entry.amount().currency().getCurrencyCode())
-          .add();
+    try (PreparedBatch batch = handle.prepareBatch(INSERT_JOURNAL_ENTRY_SQL)) {
+      for (JournalEntry entry : transaction.entries()) {
+        batch
+            .bind("id", entry.id().value())
+            .bind("transactionId", transaction.id().value())
+            .bind("accountId", entry.accountId().value())
+            .bind("direction", entry.direction().name())
+            .bind("amountMinorUnits", entry.amount().amountMinorUnits())
+            .bind("currency", entry.amount().currency().getCurrencyCode())
+            .add();
+      }
+      batch.execute();
     }
-    batch.execute();
   }
 
   private void insertIdempotencyKey(

@@ -45,6 +45,8 @@ public final class CreateAccountUseCase {
     return rawName;
   }
 
+  // The client-facing message replaces the parse failure; the cause adds nothing.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   private AccountType parseAccountType(String rawAccountType) {
     if (rawAccountType == null) {
       throw new InvalidAccountTypeException("null");

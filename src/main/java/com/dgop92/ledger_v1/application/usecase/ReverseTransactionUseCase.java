@@ -89,6 +89,8 @@ public final class ReverseTransactionUseCase {
     return transactionRepository.append(reversal, idempotencyKey);
   }
 
+  // The client-facing message replaces the parse failure; the cause adds nothing.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   private TransactionId parseTransactionId(String rawId) {
     if (rawId == null) {
       throw new TransactionNotFoundException("null");

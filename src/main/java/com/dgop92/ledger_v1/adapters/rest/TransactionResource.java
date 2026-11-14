@@ -92,6 +92,8 @@ public class TransactionResource {
   @POST
   @Path("/{id}/reverse")
   @Produces(MediaType.APPLICATION_JSON)
+  // Malformed id is deliberately reported as not found; the parse failure carries no useful cause.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   public Response postReverseTransaction(
       @PathParam("id") String id, @HeaderParam(IDEMPOTENCY_KEY_HEADER) String idempotencyKey) {
     if (idempotencyKey == null || idempotencyKey.isBlank()) {
@@ -124,6 +126,8 @@ public class TransactionResource {
   @GET
   @Path("/{id}")
   @Produces(MediaType.APPLICATION_JSON)
+  // Malformed id is deliberately reported as not found; the parse failure carries no useful cause.
+  @SuppressWarnings("PMD.PreserveStackTrace")
   public Response getTransaction(@PathParam("id") String id) {
     TransactionId transactionId;
     try {

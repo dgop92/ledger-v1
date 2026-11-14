@@ -18,13 +18,7 @@ public final class JournalEntryId {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof JournalEntryId other)) {
-      return false;
-    }
-    return value.equals(other.value);
+    return this == o || o instanceof JournalEntryId other && value.equals(other.value);
   }
 
   @Override
