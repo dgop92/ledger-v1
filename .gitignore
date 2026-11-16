@@ -61,4 +61,4 @@ docs/superpowers
 .superpowers/
 
 
-docs/temp-docs
+docs/temp-docs__pycache__/
