@@ -125,6 +125,62 @@ pmd {
 
 tasks.named("pmdTest") { enabled = false }
 
+// Mutation testing (Pitest) is advisory: a custom task, not part of check/build, never gated.
+// See docs/adr/0005. Versions are pinned explicitly.
+val pitestRuntime by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    pitestRuntime("org.pitest:pitest-command-line:1.30.2")
+    pitestRuntime("org.pitest:pitest-junit5-plugin:1.2.3")
+}
+
+val pitestReportDir = layout.buildDirectory.dir("reports/pitest")
+val pitestScopedPackages =
+    listOf("com.dgop92.ledger_v1.domain.*", "com.dgop92.ledger_v1.application.usecase.*")
+
+tasks.register<JavaExec>("pitest") {
+    group = "verification"
+    description = "Advisory mutation testing of domain and application.usecase (unit tests only). Not part of build."
+    val mainOutput = sourceSets.main.map { it.output.classesDirs }
+    val testRuntime = sourceSets.test.map { it.runtimeClasspath }
+    dependsOn("classes", "testClasses")
+    classpath = pitestRuntime
+    mainClass = "org.pitest.mutationtest.commandline.MutationCoverageReport"
+    // Survivors must never fail the run; mutation score is reported, not enforced (see #28).
+    isIgnoreExitValue = true
+    doFirst {
+        val reportDir = pitestReportDir.get().asFile
+        reportDir.mkdirs()
+        // Arguments with a mutable classpath are resolved at execution time.
+        args(
+            "--reportDir",
+            reportDir.absolutePath,
+            "--outputFormats",
+            "HTML,XML",
+            "--timestampedReports",
+            "false",
+            "--targetClasses",
+            pitestScopedPackages.joinToString(","),
+            // Same packages only: @QuarkusTest classes (app.*) and ArchitectureTest never run.
+            "--targetTests",
+            pitestScopedPackages.joinToString(","),
+            "--sourceDirs",
+            file("src/main/java").absolutePath,
+            "--mutableCodePaths",
+            mainOutput.get().files.joinToString(",") { it.absolutePath },
+            "--classPath",
+            testRuntime.get().files.joinToString(",") { it.absolutePath },
+            "--threads",
+            Runtime.getRuntime().availableProcessors().toString(),
+            "--failWhenNoMutations",
+            "false",
+        )
+    }
+}
+
 configure<SpotlessExtension> {
     kotlinGradle {
         target("*.gradle.kts")

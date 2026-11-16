@@ -69,3 +69,7 @@ When `test` fails, the Gradle test reports are uploaded as the `test-reports` ar
 ## Coverage
 
 `./gradlew build` (via `check`) fails if line or branch coverage drops below the floors in `build.gradle.kts`. Reports: `build/reports/jacoco/test/html/index.html` and `build/reports/jacoco/test/jacocoTestReport.xml`. `app/config` is excluded.
+
+## Mutation testing
+
+`./gradlew pitest` runs Pitest on the `domain` and `application.usecase` packages, killing mutants with unit tests only (property tests included; `@QuarkusTest` and architecture tests are skipped, so some mutants show as `NO_COVERAGE`). It is **advisory**: it never fails on survivors and is not part of `build` or `check`. Reports: `build/reports/pitest/index.html` and `build/reports/pitest/mutations.xml`. To run it in CI, trigger the `Mutation testing` workflow manually from the Actions tab; it uploads the `pitest-report` artifact. See [ADR 0005](docs/adr/0005-custom-gradle-task-for-pitest.md).
