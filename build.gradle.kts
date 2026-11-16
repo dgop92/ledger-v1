@@ -127,14 +127,14 @@ tasks.named("pmdTest") { enabled = false }
 
 // Mutation testing (Pitest) is advisory: a custom task, not part of check/build, never gated.
 // See docs/adr/0005. Versions are pinned explicitly.
-val pitestRuntime by configurations.creating {
+val pitestTool by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
 }
 
 dependencies {
-    pitestRuntime("org.pitest:pitest-command-line:1.30.2")
-    pitestRuntime("org.pitest:pitest-junit5-plugin:1.2.3")
+    pitestTool("org.pitest:pitest-command-line:1.30.2")
+    pitestTool("org.pitest:pitest-junit5-plugin:1.2.3")
 }
 
 val pitestReportDir = layout.buildDirectory.dir("reports/pitest")
@@ -147,10 +147,8 @@ tasks.register<JavaExec>("pitest") {
     val mainOutput = sourceSets.main.map { it.output.classesDirs }
     val testRuntime = sourceSets.test.map { it.runtimeClasspath }
     dependsOn("classes", "testClasses")
-    classpath = pitestRuntime
+    classpath = pitestTool
     mainClass = "org.pitest.mutationtest.commandline.MutationCoverageReport"
-    // Survivors must never fail the run; mutation score is reported, not enforced (see #28).
-    isIgnoreExitValue = true
     doFirst {
         val reportDir = pitestReportDir.get().asFile
         reportDir.mkdirs()

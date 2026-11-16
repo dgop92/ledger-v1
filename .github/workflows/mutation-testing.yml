@@ -25,4 +25,4 @@ jobs:
         with:
           name: pitest-report
           path: build/reports/pitest/
-          if-no-files-found: ignore
+          if-no-files-found: error
