@@ -13,7 +13,7 @@ Domain terms: use the exact names in [GLOSSARY.md](GLOSSARY.md). Why key design 
 | Run all tests | `./gradlew test` |
 | Reformat code (Spotless) | `./gradlew spotlessApply` |
 | Static analysis (PMD, report-only, `main`) | `./gradlew pmdMain` — findings print to console and `build/reports/pmd/`; non-blocking, also runs in `build` |
-| Mutation testing (Pitest, advisory, `domain` + `application.usecase`, unit tests only) | `./gradlew pitest` — reports in `build/reports/pitest/` (`index.html`, `mutations.xml`); never fails on survivors, not part of `build`/`check` |
+| Mutation testing (Pitest, advisory, `domain` + `application.usecase`, unit tests only) | `./gradlew pitest` — reports in `build/reports/pitest/` (`index.html`, `mutations.xml`); never fails on survivors, not part of `build`/`check`; `-PpitestTargetClasses=a.B,c.D` restricts it to those classes; to kill a branch's survivors use the `killing-pitest-survivors` skill |
 | Build native executable | `./gradlew build -Dquarkus.native.enabled=true` |
 
 Run commands from the repo root; Gradle wrapper (`./gradlew`) is checked in, don't rely on a system Gradle install.

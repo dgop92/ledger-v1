@@ -62,3 +62,6 @@ docs/superpowers
 
 
 docs/temp-docs
+
+# Python bytecode from agent skill scripts
+__pycache__/

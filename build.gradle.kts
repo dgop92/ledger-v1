@@ -161,7 +161,9 @@ tasks.register<JavaExec>("pitest") {
             "--timestampedReports",
             "false",
             "--targetClasses",
-            pitestScopedPackages.joinToString(","),
+            // Optional -PpitestTargetClasses=a.B,c.D restricts mutation to those classes; default is the full scope.
+            providers.gradleProperty("pitestTargetClasses").orNull?.takeIf { it.isNotBlank() }
+                ?: pitestScopedPackages.joinToString(","),
             // Same packages only: @QuarkusTest classes (app.*) and ArchitectureTest never run.
             "--targetTests",
             pitestScopedPackages.joinToString(","),
